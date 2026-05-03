@@ -1,0 +1,4 @@
+Algorithm,Tasks,VMs,Runs,Mean fitness,Best fitness,Worst fitness,Std dev
+Hybrid (no diversity),30,6,30,10538.4742,6991.3229,16856.1263,2261.8376
+Hybrid + Island Model,30,6,30,10539.9857,6992.1075,16855.2572,2262.2180
+Hybrid + Fitness Sharing,30,6,30,10544.1596,6991.3405,16855.6117,2262.8100
