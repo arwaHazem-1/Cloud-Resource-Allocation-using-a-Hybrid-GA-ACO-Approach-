@@ -22,6 +22,13 @@ from fitness.evaluator import evaluate, evaluate_metrics
 
 ROOT = Path(__file__).resolve().parent
 SHARED_SEEDS_FILE = ROOT / "experiments" / "seeds.txt"
+PLOTS_DIR = ROOT / "results" / "plots"
+
+
+def fig_to_png_bytes(fig) -> bytes:
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+    return buf.getvalue()
 
 
 def load_shared_seeds(n: int) -> list[int]:
@@ -183,6 +190,8 @@ convergence_threshold_pct = st.sidebar.slider(
 st.sidebar.subheader("Reproducibility")
 seed_mode = st.sidebar.selectbox("Seed mode", ["Shared seeds file", "Single fixed seed", "Random (not reproducible)"], index=0)
 fixed_seed = int(st.sidebar.number_input("Base seed", value=203948, step=1))
+st.sidebar.subheader("Exports")
+save_plots_to_disk = st.sidebar.checkbox("Also save plots to `results/plots/`", value=False)
 
 if seed_mode == "Shared seeds file":
     shared = load_shared_seeds(runs)
@@ -437,10 +446,14 @@ if st.button("Run All Algorithms"):
     ax_conv.set_title("Convergence Curve")
     ax_conv.legend()
     st.pyplot(fig_conv)
-    conv_buf = io.BytesIO()
-    fig_conv.savefig(conv_buf, format="png", dpi=150, bbox_inches="tight")
-    st.download_button("Download Convergence Plot", data=conv_buf.getvalue(),
+    conv_png = fig_to_png_bytes(fig_conv)
+    if save_plots_to_disk:
+        PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+        (PLOTS_DIR / "convergence_plot.png").write_bytes(conv_png)
+        st.caption("Saved: `results/plots/convergence_plot.png`")
+    st.download_button("Download Convergence Plot", data=conv_png,
                        file_name="convergence_plot.png", mime="image/png")
+    plt.close(fig_conv)
 
     # ================== ALLOCATION ==================
     st.subheader("Task → VM Assignment (Hybrid)")
@@ -460,10 +473,14 @@ if st.button("Run All Algorithms"):
     ax_load.set_ylabel("CPU + RAM Load")
     ax_load.set_title("VM Load Distribution")
     st.pyplot(fig_load)
-    load_buf = io.BytesIO()
-    fig_load.savefig(load_buf, format="png", dpi=150, bbox_inches="tight")
-    st.download_button("Download Load Plot", data=load_buf.getvalue(),
+    load_png = fig_to_png_bytes(fig_load)
+    if save_plots_to_disk:
+        PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+        (PLOTS_DIR / "vm_load_plot.png").write_bytes(load_png)
+        st.caption("Saved: `results/plots/vm_load_plot.png`")
+    st.download_button("Download Load Plot", data=load_png,
                        file_name="vm_load_plot.png", mime="image/png")
+    plt.close(fig_load)
 
     # ================== PERFORMANCE METRICS ==================
     st.subheader("Performance Metrics")
@@ -498,10 +515,14 @@ if st.button("Run All Algorithms"):
     ax_cmp.set_ylabel("Fitness")
     ax_cmp.set_title("Improvement Comparison")
     st.pyplot(fig_cmp)
-    cmp_buf = io.BytesIO()
-    fig_cmp.savefig(cmp_buf, format="png", dpi=150, bbox_inches="tight")
-    st.download_button("Download Comparison Plot", data=cmp_buf.getvalue(),
+    cmp_png = fig_to_png_bytes(fig_cmp)
+    if save_plots_to_disk:
+        PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+        (PLOTS_DIR / "fitness_comparison.png").write_bytes(cmp_png)
+        st.caption("Saved: `results/plots/fitness_comparison.png`")
+    st.download_button("Download Comparison Plot", data=cmp_png,
                        file_name="fitness_comparison.png", mime="image/png")
+    plt.close(fig_cmp)
 
     # ================== EXPORTS ==================
     results_export = pd.DataFrame({

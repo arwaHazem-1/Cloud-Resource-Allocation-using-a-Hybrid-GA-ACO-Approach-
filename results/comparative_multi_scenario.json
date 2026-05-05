@@ -1,0 +1,632 @@
+[
+  {
+    "scenario": "low_load",
+    "tasks_n": 20,
+    "vms_n": 4,
+    "load_level": "low",
+    "workload_mode": "synthetic",
+    "n_runs": 3,
+    "per_algorithm_runs": {
+      "GA": [
+        {
+          "seed": 914563.0,
+          "fitness": 4052.5525302379456,
+          "total_cost": 3080.6509831406092,
+          "response_time": 831.9015470973363,
+          "resource_utilization": 0.7155172413793103,
+          "jains_fairness_index": 0.6308063166855015
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 3420.6820734891216,
+          "total_cost": 2355.2381782818125,
+          "response_time": 975.4438952073091,
+          "resource_utilization": 0.6322727272727273,
+          "jains_fairness_index": 0.645054874193632
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 2450.4948135459927,
+          "total_cost": 1319.7051125403866,
+          "response_time": 760.7897010056059,
+          "resource_utilization": 0.7348484848484849,
+          "jains_fairness_index": 0.5453072348143353
+        }
+      ],
+      "ACO": [
+        {
+          "seed": 914563.0,
+          "fitness": 4050.981547807603,
+          "total_cost": 3076.1471886674917,
+          "response_time": 834.8343591401114,
+          "resource_utilization": 0.7155172413793103,
+          "jains_fairness_index": 0.652245087313896
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 3391.289395748679,
+          "total_cost": 2387.8073478529304,
+          "response_time": 953.4820478957487,
+          "resource_utilization": 0.6322727272727273,
+          "jains_fairness_index": 0.659502732245165
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 2450.4948135459927,
+          "total_cost": 1319.7051125403866,
+          "response_time": 760.7897010056059,
+          "resource_utilization": 0.7348484848484849,
+          "jains_fairness_index": 0.5384396142805642
+        }
+      ],
+      "Hybrid": [
+        {
+          "seed": 914563.0,
+          "fitness": 4050.823354242549,
+          "total_cost": 3076.356601601399,
+          "response_time": 834.4667526411505,
+          "resource_utilization": 0.7155172413793103,
+          "jains_fairness_index": 0.6003974710803981
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 3391.289395748679,
+          "total_cost": 2387.8073478529304,
+          "response_time": 953.4820478957487,
+          "resource_utilization": 0.6322727272727273,
+          "jains_fairness_index": 0.659502732245165
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 2450.657253143341,
+          "total_cost": 1319.7692114495194,
+          "response_time": 760.8880416938218,
+          "resource_utilization": 0.7348484848484849,
+          "jains_fairness_index": 0.5483862432870206
+        }
+      ],
+      "DE+GA": [
+        {
+          "seed": 914563.0,
+          "fitness": 4051.61432206782,
+          "total_cost": 3075.3095369318653,
+          "response_time": 836.3047851359547,
+          "resource_utilization": 0.7155172413793103,
+          "jains_fairness_index": 0.5971021487217584
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 3392.7074612867045,
+          "total_cost": 2386.2556676439026,
+          "response_time": 956.4517936428019,
+          "resource_utilization": 0.6322727272727273,
+          "jains_fairness_index": 0.6689980193956304
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 2457.048810558642,
+          "total_cost": 1343.5404895346426,
+          "response_time": 753.5083210239992,
+          "resource_utilization": 0.7348484848484849,
+          "jains_fairness_index": 0.5481220636532619
+        }
+      ]
+    },
+    "summary": {
+      "GA": {
+        "mean_fitness": 3307.9098057576866,
+        "std_fitness": 806.9606063371534,
+        "mean_cost": 2251.864757987603,
+        "mean_response_time": 856.0450477700838,
+        "mean_resource_utilization": 0.6942128178335075,
+        "mean_jains_fairness_index": 0.607056141897823
+      },
+      "ACO": {
+        "mean_fitness": 3297.5885857007584,
+        "std_fitness": 804.3471439556281,
+        "mean_cost": 2261.2198830202697,
+        "mean_response_time": 849.7020360138221,
+        "mean_resource_utilization": 0.6942128178335075,
+        "mean_jains_fairness_index": 0.6167291446132084
+      },
+      "Hybrid": {
+        "mean_fitness": 3297.5900010448568,
+        "std_fitness": 804.1875217899475,
+        "mean_cost": 2261.311053634616,
+        "mean_response_time": 849.6122807435737,
+        "mean_resource_utilization": 0.6942128178335075,
+        "mean_jains_fairness_index": 0.6027621488708612
+      },
+      "DE+GA": {
+        "mean_fitness": 3300.4568646377215,
+        "std_fitness": 801.2754969797851,
+        "mean_cost": 2268.3685647034704,
+        "mean_response_time": 848.7549666009186,
+        "mean_resource_utilization": 0.6942128178335075,
+        "mean_jains_fairness_index": 0.6047407439235503
+      }
+    },
+    "statistical_tests": {
+      "Hybrid_vs_GA": {
+        "mann_whitney_u": [
+          4.0,
+          0.8272593465627114
+        ],
+        "wilcoxon_signed_rank": [
+          1.0,
+          0.22779999398822914
+        ]
+      },
+      "Hybrid_vs_ACO": {
+        "mann_whitney_u": [
+          4.5,
+          1.0
+        ],
+        "wilcoxon_signed_rank": [
+          1.0,
+          0.5637028616507731
+        ]
+      },
+      "GA_vs_ACO": {
+        "mann_whitney_u": [
+          3.5,
+          0.6579050194284821
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.08326451666355039
+        ]
+      },
+      "DEGA_vs_GA": {
+        "mann_whitney_u": [
+          4.0,
+          0.8272593465627114
+        ],
+        "wilcoxon_signed_rank": [
+          2.0,
+          0.5464935954065822
+        ]
+      },
+      "DEGA_vs_ACO": {
+        "mann_whitney_u": [
+          3.0,
+          0.5126907602619235
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "DEGA_vs_Hybrid": {
+        "mann_whitney_u": [
+          3.0,
+          0.5126907602619235
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "medium_load",
+    "tasks_n": 50,
+    "vms_n": 10,
+    "load_level": "medium",
+    "workload_mode": "synthetic",
+    "n_runs": 3,
+    "per_algorithm_runs": {
+      "GA": [
+        {
+          "seed": 914563.0,
+          "fitness": 12037.036548841143,
+          "total_cost": 8614.19192285207,
+          "response_time": 1692.8446259890732,
+          "resource_utilization": 1.360543699186992,
+          "jains_fairness_index": 0.5920607629191535
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 15132.685749045659,
+          "total_cost": 11224.828014478247,
+          "response_time": 1977.8577345674105,
+          "resource_utilization": 1.3309294871794872,
+          "jains_fairness_index": 0.5098624063313996
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 12758.868726222456,
+          "total_cost": 8798.670946300812,
+          "response_time": 2060.197779921644,
+          "resource_utilization": 1.2180047694753577,
+          "jains_fairness_index": 0.47335001814010236
+        }
+      ],
+      "ACO": [
+        {
+          "seed": 914563.0,
+          "fitness": 11961.974847413407,
+          "total_cost": 8662.180179893188,
+          "response_time": 1659.7946675202193,
+          "resource_utilization": 1.360543699186992,
+          "jains_fairness_index": 0.6171733168975595
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 15053.714592259566,
+          "total_cost": 10868.88335440914,
+          "response_time": 2284.831237850428,
+          "resource_utilization": 1.3309294871794872,
+          "jains_fairness_index": 0.46091909427966254
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 12648.207593920322,
+          "total_cost": 8909.13286441328,
+          "response_time": 1929.0747295070428,
+          "resource_utilization": 1.2180047694753577,
+          "jains_fairness_index": 0.5415025084185017
+        }
+      ],
+      "Hybrid": [
+        {
+          "seed": 914563.0,
+          "fitness": 11945.741689667266,
+          "total_cost": 8697.882671169531,
+          "response_time": 1607.859018497735,
+          "resource_utilization": 1.360543699186992,
+          "jains_fairness_index": 0.6081423458375652
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 15027.359874521222,
+          "total_cost": 10771.201057131582,
+          "response_time": 2356.1588173896407,
+          "resource_utilization": 1.3309294871794872,
+          "jains_fairness_index": 0.4699304170451536
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 12646.801487545494,
+          "total_cost": 8954.710791737267,
+          "response_time": 1902.090695808226,
+          "resource_utilization": 1.2180047694753577,
+          "jains_fairness_index": 0.5400720548601484
+        }
+      ],
+      "DE+GA": [
+        {
+          "seed": 914563.0,
+          "fitness": 12064.651808978533,
+          "total_cost": 8801.710715263,
+          "response_time": 1582.9410937155335,
+          "resource_utilization": 1.360543699186992,
+          "jains_fairness_index": 0.6308945977482125
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 15239.39044398677,
+          "total_cost": 10942.550707304525,
+          "response_time": 2396.839736682244,
+          "resource_utilization": 1.3309294871794872,
+          "jains_fairness_index": 0.49609201659662944
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 12812.18366770047,
+          "total_cost": 8953.958381998968,
+          "response_time": 1948.2252857015028,
+          "resource_utilization": 1.2180047694753577,
+          "jains_fairness_index": 0.4837156948983949
+        }
+      ]
+    },
+    "summary": {
+      "GA": {
+        "mean_fitness": 13309.530341369753,
+        "std_fitness": 1619.6240778276876,
+        "mean_cost": 9545.896961210377,
+        "mean_response_time": 1910.3000468260425,
+        "mean_resource_utilization": 1.3031593186139456,
+        "mean_jains_fairness_index": 0.5250910624635519
+      },
+      "ACO": {
+        "mean_fitness": 13221.299011197765,
+        "std_fitness": 1623.588307386805,
+        "mean_cost": 9480.065466238535,
+        "mean_response_time": 1957.9002116258969,
+        "mean_resource_utilization": 1.3031593186139456,
+        "mean_jains_fairness_index": 0.5398649731985746
+      },
+      "Hybrid": {
+        "mean_fitness": 13206.634350577995,
+        "std_fitness": 1615.2870596906369,
+        "mean_cost": 9474.598173346127,
+        "mean_response_time": 1955.3695105652005,
+        "mean_resource_utilization": 1.3031593186139456,
+        "mean_jains_fairness_index": 0.5393816059142891
+      },
+      "DE+GA": {
+        "mean_fitness": 13372.07530688859,
+        "std_fitness": 1659.77418219409,
+        "mean_cost": 9566.073268188831,
+        "mean_response_time": 1976.0020386997603,
+        "mean_resource_utilization": 1.3031593186139456,
+        "mean_jains_fairness_index": 0.5369007697477456
+      }
+    },
+    "statistical_tests": {
+      "Hybrid_vs_GA": {
+        "mann_whitney_u": [
+          3.0,
+          0.5126907602619235
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "Hybrid_vs_ACO": {
+        "mann_whitney_u": [
+          3.0,
+          0.5126907602619235
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "GA_vs_ACO": {
+        "mann_whitney_u": [
+          3.0,
+          0.5126907602619235
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "DEGA_vs_GA": {
+        "mann_whitney_u": [
+          3.0,
+          0.5126907602619235
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "DEGA_vs_ACO": {
+        "mann_whitney_u": [
+          3.0,
+          0.5126907602619235
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "DEGA_vs_Hybrid": {
+        "mann_whitney_u": [
+          3.0,
+          0.5126907602619235
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "high_load",
+    "tasks_n": 100,
+    "vms_n": 20,
+    "load_level": "high",
+    "workload_mode": "synthetic",
+    "n_runs": 3,
+    "per_algorithm_runs": {
+      "GA": [
+        {
+          "seed": 914563.0,
+          "fitness": 49766.623348386216,
+          "total_cost": 33612.93691048233,
+          "response_time": 7333.686437903891,
+          "resource_utilization": 2.130187074829932,
+          "jains_fairness_index": 0.24424763175875575
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 47459.79982533843,
+          "total_cost": 32589.22639408773,
+          "response_time": 5940.5734312507,
+          "resource_utilization": 2.4051030164702976,
+          "jains_fairness_index": 0.39414062131200106
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 57542.34468984298,
+          "total_cost": 42032.373707658655,
+          "response_time": 6289.970982184326,
+          "resource_utilization": 2.14017094017094,
+          "jains_fairness_index": 0.365486113444764
+        }
+      ],
+      "ACO": [
+        {
+          "seed": 914563.0,
+          "fitness": 46715.12198514668,
+          "total_cost": 26175.927552211637,
+          "response_time": 9969.194432935046,
+          "resource_utilization": 2.130187074829932,
+          "jains_fairness_index": 0.14846544638299417
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 45140.53646552313,
+          "total_cost": 26678.777041300127,
+          "response_time": 8401.759424223002,
+          "resource_utilization": 2.4051030164702976,
+          "jains_fairness_index": 0.23561908787867109
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 55954.74667327118,
+          "total_cost": 38850.74038370091,
+          "response_time": 7114.006289570267,
+          "resource_utilization": 2.14017094017094,
+          "jains_fairness_index": 0.2581373008090279
+        }
+      ],
+      "Hybrid": [
+        {
+          "seed": 914563.0,
+          "fitness": 46747.98974879894,
+          "total_cost": 26083.414077712052,
+          "response_time": 10084.575671086888,
+          "resource_utilization": 2.130187074829932,
+          "jains_fairness_index": 0.1485878276004919
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 45101.26919695264,
+          "total_cost": 26522.10299765662,
+          "response_time": 8539.166199296023,
+          "resource_utilization": 2.4051030164702976,
+          "jains_fairness_index": 0.2373886425614724
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 55914.36721065278,
+          "total_cost": 38751.82063419181,
+          "response_time": 7192.546576460973,
+          "resource_utilization": 2.14017094017094,
+          "jains_fairness_index": 0.26611740663177186
+        }
+      ],
+      "DE+GA": [
+        {
+          "seed": 914563.0,
+          "fitness": 51469.97482975239,
+          "total_cost": 35480.21298653708,
+          "response_time": 7069.761843215308,
+          "resource_utilization": 2.130187074829932,
+          "jains_fairness_index": 0.2585492660358512
+        },
+        {
+          "seed": 203948.0,
+          "fitness": 47881.06299827077,
+          "total_cost": 32670.69563513036,
+          "response_time": 6340.367363140407,
+          "resource_utilization": 2.4051030164702976,
+          "jains_fairness_index": 0.4195586621962517
+        },
+        {
+          "seed": 778124.0,
+          "fitness": 58861.62112855599,
+          "total_cost": 43893.58848984984,
+          "response_time": 5938.032638706152,
+          "resource_utilization": 2.14017094017094,
+          "jains_fairness_index": 0.37546173813071676
+        }
+      ]
+    },
+    "summary": {
+      "GA": {
+        "mean_fitness": 51589.58928785587,
+        "std_fitness": 5282.691676459706,
+        "mean_cost": 36078.179004076235,
+        "mean_response_time": 6521.410283779638,
+        "mean_resource_utilization": 2.2251536771570564,
+        "mean_jains_fairness_index": 0.33462478883850694
+      },
+      "ACO": {
+        "mean_fitness": 49270.13504131366,
+        "std_fitness": 5842.332958008154,
+        "mean_cost": 30568.48165907089,
+        "mean_response_time": 8494.986715576104,
+        "mean_resource_utilization": 2.2251536771570564,
+        "mean_jains_fairness_index": 0.2140739450235644
+      },
+      "Hybrid": {
+        "mean_fitness": 49254.54205213479,
+        "std_fitness": 5826.051450209668,
+        "mean_cost": 30452.44590318683,
+        "mean_response_time": 8605.429482281294,
+        "mean_resource_utilization": 2.2251536771570564,
+        "mean_jains_fairness_index": 0.21736462559791206
+      },
+      "DE+GA": {
+        "mean_fitness": 52737.55298552639,
+        "std_fitness": 5598.949008420221,
+        "mean_cost": 37348.1657038391,
+        "mean_response_time": 6449.38728168729,
+        "mean_resource_utilization": 2.2251536771570564,
+        "mean_jains_fairness_index": 0.3511898887876066
+      }
+    },
+    "statistical_tests": {
+      "Hybrid_vs_GA": {
+        "mann_whitney_u": [
+          2.0,
+          0.27523352407483426
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "Hybrid_vs_ACO": {
+        "mann_whitney_u": [
+          4.0,
+          0.8272593465627114
+        ],
+        "wilcoxon_signed_rank": [
+          1.0,
+          0.22779999398822914
+        ]
+      },
+      "GA_vs_ACO": {
+        "mann_whitney_u": [
+          2.0,
+          0.27523352407483426
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "DEGA_vs_GA": {
+        "mann_whitney_u": [
+          3.0,
+          0.5126907602619235
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "DEGA_vs_ACO": {
+        "mann_whitney_u": [
+          2.0,
+          0.27523352407483426
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      },
+      "DEGA_vs_Hybrid": {
+        "mann_whitney_u": [
+          2.0,
+          0.27523352407483426
+        ],
+        "wilcoxon_signed_rank": [
+          0,
+          0.07044042927208793
+        ]
+      }
+    }
+  }
+]
