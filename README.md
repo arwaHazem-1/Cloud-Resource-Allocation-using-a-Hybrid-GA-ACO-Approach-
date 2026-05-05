@@ -89,11 +89,62 @@ Streamlit app (`app.py`) provides:
 - Statistical test table
 - Plot and CSV export buttons
 
+## Setup
+
+### Requirements
+
+- Python 3.10 or later
+
+### Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+All required packages are listed in `requirements.txt`:
+
+| Package | Purpose |
+|---|---|
+| `streamlit` | Interactive web UI |
+| `numpy` | Numerical operations |
+| `pandas` | Data manipulation and CSV export |
+| `matplotlib` | Convergence and comparison plots |
+
+### Project structure
+
+```
+.
+├── app.py                        # Streamlit UI entry point
+├── requirements.txt              # Python dependencies
+├── algorithms/
+│   ├── ga.py                     # Genetic Algorithm
+│   ├── aco.py                    # Ant Colony Optimisation (AS + ACS)
+│   ├── hybrid.py                 # Hybrid GA-ACO pipeline
+│   ├── de_ga_hybrid.py           # DE+GA hybrid
+│   └── operators.py              # Shared GA operators
+├── diversity/
+│   └── diversity.py              # Fitness sharing & Island Model
+├── environment/
+│   ├── cloud_model.py            # Task/VM data classes
+│   ├── dataset_loader.py         # Synthetic workload generator
+│   └── standard_workload.py      # Workload builder (synthetic + trace)
+├── fitness/
+│   └── evaluator.py              # Fitness & metrics (cost, response time, Jain's index)
+├── experiments/
+│   ├── comparative_runner.py     # Batch experiment runner
+│   ├── hybrid_runner.py          # Hybrid-specific runner
+│   └── seeds.txt                 # Fixed seeds for reproducibility
+└── data/
+    └── google_cluster_sample.csv # Sample Google cluster trace
+```
+
 ## Run
 
 ### Streamlit UI
 
-`streamlit run app.py`
+```bash
+streamlit run app.py
+```
 
 ### Comparative experiments
 
@@ -104,19 +155,3 @@ Synthetic:
 Trace-based:
 
 `python experiments/comparative_runner.py --runs 30 --workload-mode trace --trace-csv data/google_cluster_sample.csv`
-
-### GA operator sweep (selection × crossover × mutation)
-
-This is the experiment required to compare different GA operator choices under identical stored seeds:
-
-Synthetic:
-
-`python experiments/ga_operator_sweep.py --runs 30 --tasks 30 --vms 6 --workload-mode synthetic`
-
-Trace-based:
-
-`python experiments/ga_operator_sweep.py --runs 30 --tasks 30 --vms 6 --workload-mode trace --trace-csv data/google_cluster_sample.csv`
-
-### Report
-
-See `REPORT.md` for the full project write-up (idea, modeling, dataset, algorithms, experiments, and literature review).

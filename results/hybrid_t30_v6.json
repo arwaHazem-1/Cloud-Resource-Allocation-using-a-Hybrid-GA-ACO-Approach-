@@ -3,160 +3,160 @@
   "tasks_n": 30,
   "vms_n": 6,
   "n_runs": 30,
-  "mean_fitness": 10538.474168037743,
-  "best_fitness": 6991.322907374026,
-  "worst_fitness": 16856.126283857906,
-  "std_fitness": 2261.837638265334,
+  "mean_fitness": 10543.827629938345,
+  "best_fitness": 6994.234625591299,
+  "worst_fitness": 16866.677280529344,
+  "std_fitness": 2264.45969859372,
   "best_seed": 271005,
   "runs": [
     {
       "seed": 914563,
-      "best_fitness": 10999.640807485706,
+      "best_fitness": 11016.430343523329,
       "cycles_ran": 4
     },
     {
       "seed": 203948,
-      "best_fitness": 13125.152906561143,
+      "best_fitness": 13131.575404622363,
       "cycles_ran": 4
     },
     {
       "seed": 778124,
-      "best_fitness": 8970.762591413795,
+      "best_fitness": 8991.612251502314,
       "cycles_ran": 4
     },
     {
       "seed": 550021,
-      "best_fitness": 10769.968933417395,
+      "best_fitness": 10774.937258352624,
       "cycles_ran": 4
     },
     {
       "seed": 991077,
-      "best_fitness": 9561.823348140739,
+      "best_fitness": 9572.679095240559,
       "cycles_ran": 4
     },
     {
       "seed": 120039,
-      "best_fitness": 8336.866283694335,
+      "best_fitness": 8337.057783808712,
       "cycles_ran": 4
     },
     {
       "seed": 440982,
-      "best_fitness": 7908.927821652558,
+      "best_fitness": 7910.943463650245,
       "cycles_ran": 4
     },
     {
       "seed": 702115,
-      "best_fitness": 10449.356579723893,
+      "best_fitness": 10449.698035319048,
       "cycles_ran": 4
     },
     {
       "seed": 318400,
-      "best_fitness": 14578.15787350131,
+      "best_fitness": 14612.166260239861,
       "cycles_ran": 4
     },
     {
       "seed": 681233,
-      "best_fitness": 8871.91202319181,
+      "best_fitness": 8841.41950773871,
       "cycles_ran": 4
     },
     {
       "seed": 410029,
-      "best_fitness": 9654.764023633825,
+      "best_fitness": 9664.733196446541,
       "cycles_ran": 4
     },
     {
       "seed": 872104,
-      "best_fitness": 7411.085372243369,
+      "best_fitness": 7416.536291450759,
       "cycles_ran": 4
     },
     {
       "seed": 150997,
-      "best_fitness": 14672.982142571393,
+      "best_fitness": 14662.9462640292,
       "cycles_ran": 4
     },
     {
       "seed": 630512,
-      "best_fitness": 16856.126283857906,
+      "best_fitness": 16866.677280529344,
       "cycles_ran": 4
     },
     {
       "seed": 290114,
-      "best_fitness": 8369.451626594164,
+      "best_fitness": 8377.06279393175,
       "cycles_ran": 4
     },
     {
       "seed": 845221,
-      "best_fitness": 10174.529685774127,
+      "best_fitness": 10165.4227455339,
       "cycles_ran": 4
     },
     {
       "seed": 509903,
-      "best_fitness": 11384.82040568045,
+      "best_fitness": 11392.515990039657,
       "cycles_ran": 4
     },
     {
       "seed": 100281,
-      "best_fitness": 11335.24031631407,
+      "best_fitness": 11336.216391746895,
       "cycles_ran": 4
     },
     {
       "seed": 720445,
-      "best_fitness": 14302.81597954211,
+      "best_fitness": 14312.247445034174,
       "cycles_ran": 4
     },
     {
       "seed": 399182,
-      "best_fitness": 11671.614182059273,
+      "best_fitness": 11671.7805967124,
       "cycles_ran": 4
     },
     {
       "seed": 615700,
-      "best_fitness": 9513.993130511111,
+      "best_fitness": 9514.59933706946,
       "cycles_ran": 4
     },
     {
       "seed": 932110,
-      "best_fitness": 10214.004916255888,
+      "best_fitness": 10217.50423239472,
       "cycles_ran": 4
     },
     {
       "seed": 271005,
-      "best_fitness": 6991.322907374026,
+      "best_fitness": 6994.234625591299,
       "cycles_ran": 4
     },
     {
       "seed": 803417,
-      "best_fitness": 10218.302135732249,
+      "best_fitness": 10226.590857221117,
       "cycles_ran": 4
     },
     {
       "seed": 468002,
-      "best_fitness": 10009.603074436203,
+      "best_fitness": 10014.047294757902,
       "cycles_ran": 4
     },
     {
       "seed": 111980,
-      "best_fitness": 9435.567096250115,
+      "best_fitness": 9439.321517233431,
       "cycles_ran": 4
     },
     {
       "seed": 694201,
-      "best_fitness": 10881.938424304082,
+      "best_fitness": 10888.694955806835,
       "cycles_ran": 4
     },
     {
       "seed": 538801,
-      "best_fitness": 10592.452559138075,
+      "best_fitness": 10617.86035288517,
       "cycles_ran": 4
     },
     {
       "seed": 267399,
-      "best_fitness": 9632.59804333286,
+      "best_fitness": 9638.195495863312,
       "cycles_ran": 4
     },
     {
       "seed": 980016,
-      "best_fitness": 9258.443566744296,
+      "best_fitness": 9259.121829874706,
       "cycles_ran": 4
     }
   ]

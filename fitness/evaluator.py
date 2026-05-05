@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Sequence, Tuple
+from typing import Dict, Literal, Sequence, Tuple
 
 
 ResponseTimeMetric = Literal["makespan", "mean_vm_time"]
@@ -76,3 +76,62 @@ def evaluate_components(
 def evaluate(individual: Sequence[int], env, cfg: FitnessConfig | None = None) -> float:
     fitness, _cost, _rt, _pen = evaluate_components(individual=individual, env=env, cfg=cfg)
     return fitness
+
+
+def _jains_fairness(values: Sequence[float]) -> float:
+    """Compute Jain's fairness index in [0, 1]."""
+    n = len(values)
+    if n == 0:
+        return 0.0
+    s = float(sum(values))
+    sq = float(sum(v * v for v in values))
+    if sq <= 0.0:
+        return 0.0
+    return (s * s) / (n * sq)
+
+
+def evaluate_metrics(
+    individual: Sequence[int],
+    env,
+    cfg: FitnessConfig | None = None,
+) -> Dict[str, float]:
+    """
+    Extended metrics used in experiment reporting.
+    """
+    cfg = cfg or FitnessConfig()
+    fitness, total_cost, response_time, penalty = evaluate_components(individual, env, cfg=cfg)
+
+    vms = env.vms
+    vm_cpu_usage = [0.0] * len(vms)
+    vm_ram_usage = [0.0] * len(vms)
+    for task_idx, vm_id in enumerate(individual):
+        task = env.tasks[task_idx]
+        vm_cpu_usage[vm_id] += float(task.cpu)
+        vm_ram_usage[vm_id] += float(task.ram)
+
+    total_cpu_capacity = sum(float(vm.cpu_capacity) for vm in vms)
+    total_ram_capacity = sum(float(vm.ram_capacity) for vm in vms)
+    total_cpu_used = sum(vm_cpu_usage)
+    total_ram_used = sum(vm_ram_usage)
+
+    cpu_utilization = (total_cpu_used / total_cpu_capacity) if total_cpu_capacity > 0 else 0.0
+    ram_utilization = (total_ram_used / total_ram_capacity) if total_ram_capacity > 0 else 0.0
+    resource_utilization = 0.5 * (cpu_utilization + ram_utilization)
+
+    # Combined per-VM load score used for fairness (CPU ratio + RAM ratio).
+    per_vm_load = []
+    for i, vm in enumerate(vms):
+        cpu_ratio = vm_cpu_usage[i] / float(vm.cpu_capacity) if vm.cpu_capacity > 0 else 0.0
+        ram_ratio = vm_ram_usage[i] / float(vm.ram_capacity) if vm.ram_capacity > 0 else 0.0
+        per_vm_load.append(0.5 * (cpu_ratio + ram_ratio))
+
+    return {
+        "fitness": float(fitness),
+        "total_cost": float(total_cost),
+        "response_time": float(response_time),
+        "penalty": float(penalty),
+        "cpu_utilization": float(cpu_utilization),
+        "ram_utilization": float(ram_utilization),
+        "resource_utilization": float(resource_utilization),
+        "jains_fairness_index": float(_jains_fairness(per_vm_load)),
+    }
