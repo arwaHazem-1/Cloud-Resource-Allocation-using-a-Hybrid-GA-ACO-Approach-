@@ -7,11 +7,11 @@ from typing import Dict, List
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from algorithms.aco import ACOConfig, run_aco  # noqa: E402
-from algorithms.ga import GAConfig, run_ga  # noqa: E402
-from environment.cloud_model import CloudEnvironment  # noqa: E402
+from algorithms.aco import ACOConfig, run_aco          # noqa: E402
+from algorithms.ga import GAConfig, run_ga             # noqa: E402
+from environment.cloud_model import CloudEnvironment   # noqa: E402
 from environment.dataset_loader import generate_tasks, generate_vms  # noqa: E402
-from fitness.evaluator import evaluate  # noqa: E402
+from fitness.evaluator import evaluate, evaluate_components           # noqa: E402
 
 
 def load_seeds(path: str) -> List[int]:
@@ -27,6 +27,29 @@ def load_seeds(path: str) -> List[int]:
     return seeds
 
 
+def _compute_extra_metrics(genome, env):
+    """
+    Returns (fitness, cost, response_time, penalty, resource_util, load_balance).
+    Extracted once per run and stored alongside best_fitness.
+    """
+    fitness, cost, response_time, penalty = evaluate_components(genome, env)
+
+    vm_time = [0.0] * len(env.vms)
+    vm_cpu  = [0.0] * len(env.vms)
+    for ti, vi in enumerate(genome):
+        t = env.tasks[ti]
+        vm_time[vi] += t.length / env.vms[vi].speed
+        vm_cpu[vi]  += t.cpu
+
+    resource_util = (
+        sum(vm_cpu[i] / env.vms[i].cpu_capacity for i in range(len(env.vms)))
+        / len(env.vms)
+    )
+    load_balance = (max(vm_time) - min(vm_time)) / (max(vm_time) + 1e-9)
+
+    return fitness, cost, response_time, penalty, resource_util, load_balance
+
+
 def run_30_ga(
     cfg: GAConfig,
     tasks_n: int,
@@ -40,22 +63,44 @@ def run_30_ga(
 
         random.seed(seed)
         tasks = generate_tasks(tasks_n)
-        vms = generate_vms(vms_n)
-        env = CloudEnvironment(tasks, vms)
+        vms   = generate_vms(vms_n)
+        env   = CloudEnvironment(tasks, vms)
 
         out = run_ga(env=env, fitness_fn=evaluate, cfg=cfg, seed=seed)
+
+        _, cost, response_time, penalty, resource_util, load_balance = (
+            _compute_extra_metrics(out["best_genome"], env)
+        )
+
         results.append(
             {
-                "seed": seed,
-                "best_fitness": out["best_fitness"],
-                "best_genome": out["best_genome"],
+                "seed":            seed,
+                "best_fitness":    out["best_fitness"],
+                "cost":            cost,
+                "response_time":   response_time,
+                "penalty":         penalty,
+                "resource_util":   resource_util,
+                "load_balance":    load_balance,
+                "best_genome":     out["best_genome"],
                 "generations_ran": len(out["history_best"]) - 1,
             }
         )
 
     best = min(results, key=lambda r: r["best_fitness"])
     mean = sum(r["best_fitness"] for r in results) / len(results)
-    return {"config": asdict(cfg), "algorithm": "ga", "tasks_n": tasks_n, "vms_n": vms_n, "best": best, "mean_best_fitness": mean, "runs": results}
+    return {
+        "config":             asdict(cfg),
+        "algorithm":          "ga",
+        "tasks_n":            tasks_n,
+        "vms_n":              vms_n,
+        "best":               best,
+        "mean_best_fitness":  mean,
+        "mean_cost":          sum(r["cost"]          for r in results) / len(results),
+        "mean_response_time": sum(r["response_time"] for r in results) / len(results),
+        "mean_resource_util": sum(r["resource_util"] for r in results) / len(results),
+        "mean_load_balance":  sum(r["load_balance"]  for r in results) / len(results),
+        "runs":               results,
+    }
 
 
 def run_30_aco(
@@ -71,22 +116,44 @@ def run_30_aco(
 
         random.seed(seed)
         tasks = generate_tasks(tasks_n)
-        vms = generate_vms(vms_n)
-        env = CloudEnvironment(tasks, vms)
+        vms   = generate_vms(vms_n)
+        env   = CloudEnvironment(tasks, vms)
 
         out = run_aco(env=env, fitness_fn=evaluate, cfg=cfg, seed=seed)
+
+        _, cost, response_time, penalty, resource_util, load_balance = (
+            _compute_extra_metrics(out["best_genome"], env)
+        )
+
         results.append(
             {
-                "seed": seed,
-                "best_fitness": out["best_fitness"],
-                "best_genome": out["best_genome"],
+                "seed":           seed,
+                "best_fitness":   out["best_fitness"],
+                "cost":           cost,
+                "response_time":  response_time,
+                "penalty":        penalty,
+                "resource_util":  resource_util,
+                "load_balance":   load_balance,
+                "best_genome":    out["best_genome"],
                 "iterations_ran": out.get("iterations_ran", len(out["history_best"]) - 1),
             }
         )
 
     best = min(results, key=lambda r: r["best_fitness"])
     mean = sum(r["best_fitness"] for r in results) / len(results)
-    return {"config": asdict(cfg), "algorithm": "aco", "tasks_n": tasks_n, "vms_n": vms_n, "best": best, "mean_best_fitness": mean, "runs": results}
+    return {
+        "config":             asdict(cfg),
+        "algorithm":          "aco",
+        "tasks_n":            tasks_n,
+        "vms_n":              vms_n,
+        "best":               best,
+        "mean_best_fitness":  mean,
+        "mean_cost":          sum(r["cost"]          for r in results) / len(results),
+        "mean_response_time": sum(r["response_time"] for r in results) / len(results),
+        "mean_resource_util": sum(r["resource_util"] for r in results) / len(results),
+        "mean_load_balance":  sum(r["load_balance"]  for r in results) / len(results),
+        "runs":               results,
+    }
 
 
 def run_30(
@@ -105,24 +172,49 @@ def run_30(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="30-run seeded experiment runner (GA or ACO).")
-    parser.add_argument("--algorithm", type=str, choices=["ga", "aco"], default="ga")
-    parser.add_argument("--tasks", type=int, default=30)
-    parser.add_argument("--vms", type=int, default=6)
-    parser.add_argument("--seeds", type=str, default=os.path.join(os.path.dirname(__file__), "seeds.txt"))
-    parser.add_argument("--selection", type=str, choices=["tournament", "roulette"], default="tournament")
-    parser.add_argument("--survivor", type=str, choices=["generational", "elitism"], default="elitism")
-    parser.add_argument("--init", type=str, choices=["random", "heuristic_seeded"], default="heuristic_seeded")
+    parser = argparse.ArgumentParser(
+        description="30-run seeded experiment runner (GA or ACO)."
+    )
+    parser.add_argument("--algorithm",   type=str, choices=["ga", "aco"], default="ga")
+    parser.add_argument("--tasks",       type=int, default=30)
+    parser.add_argument("--vms",         type=int, default=6)
+    parser.add_argument(
+        "--seeds", type=str,
+        default=os.path.join(os.path.dirname(__file__), "seeds.txt"),
+    )
+    parser.add_argument(
+        "--selection", type=str,
+        choices=["tournament", "roulette"], default="tournament",
+    )
+    parser.add_argument(
+        "--survivor", type=str,
+        choices=["generational", "elitism"], default="elitism",
+    )
+    parser.add_argument(
+        "--init", type=str,
+        choices=["random", "heuristic_seeded"], default="heuristic_seeded",
+    )
     parser.add_argument("--aco-variant", type=str, choices=["AS", "ACS"], default="AS")
-    parser.add_argument("--aco-ants", type=int, default=30)
-    parser.add_argument("--aco-iters", type=int, default=200)
-    parser.add_argument("--out", type=str, default="")
+    parser.add_argument("--aco-ants",    type=int, default=30)
+    parser.add_argument("--aco-iters",   type=int, default=200)
+    parser.add_argument("--out",         type=str, default="")
     args = parser.parse_args()
 
-    ga_cfg = GAConfig(selection=args.selection, survivor_strategy=args.survivor, init=args.init)
-    aco_cfg = ACOConfig(n_ants=args.aco_ants, n_iterations=args.aco_iters, variant=args.aco_variant)  # type: ignore[arg-type]
+    ga_cfg  = GAConfig(
+        selection=args.selection,
+        survivor_strategy=args.survivor,
+        init=args.init,
+    )
+    aco_cfg = ACOConfig(
+        n_ants=args.aco_ants,
+        n_iterations=args.aco_iters,
+        variant=args.aco_variant,
+    )
 
-    default_out = os.path.join(os.path.dirname(__file__), "..", "results", f"{args.algorithm}_runs.json")
+    default_out = os.path.join(
+        os.path.dirname(__file__), "..", "results",
+        f"{args.algorithm}_runs.json",
+    )
     out_path = args.out if args.out else default_out
 
     summary = run_30(
@@ -139,10 +231,13 @@ def main() -> None:
         json.dump(summary, f, indent=2)
 
     print("Wrote:", out_path)
-    print("Mean best fitness:", summary["mean_best_fitness"])
+    print("Mean best fitness:    ", summary["mean_best_fitness"])
+    print("Mean cost:            ", summary["mean_cost"])
+    print("Mean response time:   ", summary["mean_response_time"])
+    print("Mean resource util:   ", summary["mean_resource_util"])
+    print("Mean load balance:    ", summary["mean_load_balance"])
     print("Best run:", summary["best"])
 
 
 if __name__ == "__main__":
     main()
-
