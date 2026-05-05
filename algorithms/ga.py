@@ -169,13 +169,11 @@ def run_ga(
 
         scored_next = _score_population(next_gen, fit)
 
-if cfg.survivor_strategy == "generational":
-    scored = scored_next
-else:
-    # Apply elitism correctly
-    combined = scored_next + scored  # combine old + new
-    combined_sorted = sorted(combined, key=lambda ind: ind.fitness)
-    scored = combined_sorted[:cfg.population_size]
+        if cfg.survivor_strategy == "generational":
+            scored = scored_next
+        else:
+            # elitism already injected; keep full next generation
+            scored = scored_next
 
         gen_best = min(scored, key=lambda ind: ind.fitness)
         gen_mean = sum(ind.fitness for ind in scored) / len(scored)
