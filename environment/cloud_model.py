@@ -1,21 +1,48 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import List, Sequence
+
+
+@dataclass(frozen=True)
 class Task:
-    def __init__(self, task_id, cpu, ram, length):
-        self.id = task_id
-        self.cpu = cpu
-        self.ram = ram
-        self.length = length
+    """A cloud workload unit to be scheduled on a VM."""
+
+    task_id: int
+    cpu: float
+    ram: float
+    length: float
+
+    @property
+    def id(self) -> int:
+        """Back-compat alias used elsewhere in the project."""
+        return self.task_id
 
 
+@dataclass(frozen=True)
 class VM:
-    def __init__(self, vm_id, cpu_capacity, ram_capacity, cost_per_time, speed):
-        self.id = vm_id
-        self.cpu_capacity = cpu_capacity
-        self.ram_capacity = ram_capacity
-        self.cost_per_time = cost_per_time
-        self.speed = speed
+    """A cloud compute resource with capacity, speed and cost."""
+
+    vm_id: int
+    cpu_capacity: float
+    ram_capacity: float
+    cost_per_time: float
+    speed: float
+
+    @property
+    def id(self) -> int:
+        """Back-compat alias used elsewhere in the project."""
+        return self.vm_id
 
 
+@dataclass(frozen=True)
 class CloudEnvironment:
-    def __init__(self, tasks, vms):
-        self.tasks = tasks
-        self.vms = vms
+    """Container for tasks and VMs (the optimization environment)."""
+
+    tasks: Sequence[Task]
+    vms: Sequence[VM]
+
+    def __post_init__(self) -> None:
+        # Materialize to lists for stable iteration/order across algorithms.
+        object.__setattr__(self, "tasks", list(self.tasks))
+        object.__setattr__(self, "vms", list(self.vms))

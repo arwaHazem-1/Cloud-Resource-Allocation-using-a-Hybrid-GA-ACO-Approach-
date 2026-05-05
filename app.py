@@ -3,6 +3,7 @@ import math
 import random
 import time
 from functools import partial
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,6 +18,23 @@ from diversity.diversity import IslandModel, fitness_sharing
 from environment.cloud_model import CloudEnvironment
 from environment.standard_workload import build_workload
 from fitness.evaluator import evaluate, evaluate_metrics
+
+
+ROOT = Path(__file__).resolve().parent
+SHARED_SEEDS_FILE = ROOT / "experiments" / "seeds.txt"
+
+
+def load_shared_seeds(n: int) -> list[int]:
+    """Load the project's shared seeds for reproducible UI runs."""
+    if not SHARED_SEEDS_FILE.exists():
+        return []
+    seeds: list[int] = []
+    with open(SHARED_SEEDS_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                seeds.append(int(line))
+    return seeds[:n]
 
 
 def _normal_cdf(z: float) -> float:
@@ -95,16 +113,50 @@ def generations_to_threshold(history: list, threshold_pct: float = 0.95) -> int:
 
 st.set_page_config(layout="wide")
 
-st.title("Hybrid GA-ACO Cloud Resource Allocation")
-st.markdown("""
-    ### Problem Description
-    We allocate tasks to VMs under CPU and RAM constraints to minimize cost and improve load balancing.
-    """)
+st.title("Cloud Resource Allocation (GA • ACO • Hybrid GA–ACO)")
+st.caption("UI is structured to mirror the 8-section evaluation rubric.")
+
+st.header("1) Problem Formulation & Cloud Modelling")
+st.markdown(
+    """
+We allocate tasks to VMs under CPU/RAM capacity constraints to optimize:
+- **Cost** (sum of VM runtimes × VM cost rate)
+- **Response time** (makespan or mean VM time)
+
+Decision variable: integer vector \(x\) where \(x_i\\) is the VM index assigned to task \(i\).
+    """
+)
+
+with st.expander("Rubric navigation (what to look at)", expanded=False):
+    st.markdown(
+        """
+- **2) GA Implementation**: `run_ga` results shown below
+- **3) ACO Implementation**: `run_aco` results shown below
+- **4) Hybrid GA–ACO**: `run_hybrid` results shown below
+- **5) Experimental Design**: scenario presets + shared seeds + repeated runs
+- **6) Comparative Analysis**: tables + plots + significance tests
+- **7) Performance Metrics**: cost/response/utilization/fairness
+- **8) UI**: this Streamlit dashboard
+        """
+    )
 
 st.sidebar.header("Parameters")
 
-num_tasks = st.sidebar.slider("Tasks", 5, 200, 30)
-num_vms = st.sidebar.slider("VMs", 2, 30, 6)
+st.sidebar.subheader("Workload")
+scenario_mode = st.sidebar.selectbox("Scenario Mode", ["Custom", "Low/Medium/High presets"], index=1)
+if scenario_mode == "Low/Medium/High presets":
+    scenario = st.sidebar.selectbox("Scenario", ["low_load (20/4)", "medium_load (50/10)", "high_load (100/20)"], index=0)
+    if scenario.startswith("low_load"):
+        num_tasks, num_vms, load_level = 20, 4, "low"
+    elif scenario.startswith("medium_load"):
+        num_tasks, num_vms, load_level = 50, 10, "medium"
+    else:
+        num_tasks, num_vms, load_level = 100, 20, "high"
+else:
+    num_tasks = st.sidebar.slider("Tasks", 5, 200, 30)
+    num_vms = st.sidebar.slider("VMs", 2, 30, 6)
+    load_level = st.sidebar.selectbox("Synthetic load level", ["low", "medium", "high"], index=1)
+
 cycles = st.sidebar.slider("Hybrid Cycles", 1, 10, 4)
 ga_gens = st.sidebar.slider("GA Generations", 10, 200, 50)
 aco_iters = st.sidebar.slider("ACO Iterations", 10, 200, 50)
@@ -128,18 +180,30 @@ convergence_threshold_pct = st.sidebar.slider(
     help="% of total improvement at which 'generations to threshold' is measured",
 )
 
-seed = st.sidebar.number_input("Seed (0 = random)", value=0, key="seed_input")
+st.sidebar.subheader("Reproducibility")
+seed_mode = st.sidebar.selectbox("Seed mode", ["Shared seeds file", "Single fixed seed", "Random (not reproducible)"], index=0)
+fixed_seed = int(st.sidebar.number_input("Base seed", value=203948, step=1))
 
-if seed == 0:
-    seed = random.randint(1, 100000)
+if seed_mode == "Shared seeds file":
+    shared = load_shared_seeds(runs)
+    if len(shared) < runs:
+        st.sidebar.warning("Shared seeds file missing/short; falling back to deterministic derived seeds.")
+        per_run_seeds = [fixed_seed + i for i in range(runs)]
+    else:
+        per_run_seeds = shared[:runs]
+elif seed_mode == "Single fixed seed":
+    per_run_seeds = [fixed_seed for _ in range(runs)]
+else:
+    per_run_seeds = [random.randint(1, 2**31 - 1) for _ in range(runs)]
 
-rng = random.Random(seed)
+rng = random.Random(fixed_seed)
 tasks, vms = build_workload(
     workload_mode=workload_mode,
     n_tasks=num_tasks,
     n_vms=num_vms,
     rng=rng,
     trace_csv=trace_csv_path if workload_mode == "trace" else None,
+    task_load_level=load_level if workload_mode == "synthetic" else None,
 )
 env = CloudEnvironment(tasks=tasks, vms=vms)
 
@@ -174,7 +238,7 @@ if st.button("Run All Algorithms"):
                 env,
                 fitness_fn=lambda g, e: evaluate(g, e),
                 cfg=GAConfig(generations=ga_gens),
-                seed=random.randint(1, 100000)
+                seed=int(per_run_seeds[_run]),
             )
             ga_results.append(ga_result["best_fitness"])
             ga_metrics_all.append(evaluate_metrics(ga_result["best_genome"], env))
@@ -191,7 +255,7 @@ if st.button("Run All Algorithms"):
                 env,
                 fitness_fn=lambda g, e: evaluate(g, e),
                 cfg=ACOConfig(n_iterations=aco_iters, variant=aco_variant),
-                seed=random.randint(1, 100000)
+                seed=int(per_run_seeds[_run]),
             )
             aco_results.append(aco_result["best_fitness"])
             aco_metrics_all.append(evaluate_metrics(aco_result["best_genome"], env))
@@ -220,7 +284,7 @@ if st.button("Run All Algorithms"):
                     aco_iters_per_cycle=aco_iters,
                     aco=ACOConfig(variant=aco_variant),
                 ),
-                seed=random.randint(1, 100000),
+                seed=int(per_run_seeds[_run]),
                 diversity_fn=diversity_fn,
             )
             hybrid_results.append(hybrid_result["best_fitness"])
@@ -238,7 +302,7 @@ if st.button("Run All Algorithms"):
                 env,
                 fitness_fn=lambda g, e: evaluate(g, e),
                 cfg=DEGAConfig(ga_generations=ga_gens, de_generations=aco_iters),
-                seed=random.randint(1, 100000),
+                seed=int(per_run_seeds[_run]),
             )
             dega_results.append(dega_result["best_fitness"])
             dega_metrics_all.append(evaluate_metrics(dega_result["best_genome"], env))

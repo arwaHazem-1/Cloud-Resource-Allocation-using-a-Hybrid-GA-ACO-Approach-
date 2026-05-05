@@ -22,7 +22,15 @@ from algorithms.ga import GAConfig, run_ga  # noqa: E402
 from algorithms.hybrid import HybridConfig, run_hybrid  # noqa: E402
 from environment.cloud_model import CloudEnvironment, Task  # noqa: E402
 from environment.standard_workload import build_workload  # noqa: E402
+from experiments.scenarios import DEFAULT_SCENARIOS  # noqa: E402
 from fitness.evaluator import evaluate, evaluate_metrics  # noqa: E402
+
+try:
+    import matplotlib.pyplot as plt  # type: ignore
+
+    HAS_MPL = True
+except Exception:
+    HAS_MPL = False
 
 
 def load_seeds(n: int = 30) -> List[int]:
@@ -142,26 +150,6 @@ def _std(values: Sequence[float]) -> float:
     return float((sum((v - m) ** 2 for v in values) / (len(values) - 1)) ** 0.5)
 
 
-def _generate_tasks_by_load(tasks_n: int, load_level: str, rng: random.Random) -> List[Task]:
-    profiles = {
-        "low": {"cpu": (1, 2), "ram": (1, 4), "length": (80, 300)},
-        "medium": {"cpu": (2, 4), "ram": (2, 8), "length": (200, 700)},
-        "high": {"cpu": (3, 6), "ram": (4, 12), "length": (500, 1200)},
-    }
-    p = profiles[load_level]
-    tasks: List[Task] = []
-    for i in range(tasks_n):
-        tasks.append(
-            Task(
-                task_id=i,
-                cpu=rng.randint(*p["cpu"]),
-                ram=rng.randint(*p["ram"]),
-                length=rng.randint(*p["length"]),
-            )
-        )
-    return tasks
-
-
 def _build_env(
     tasks_n: int,
     vms_n: int,
@@ -172,8 +160,13 @@ def _build_env(
 ) -> CloudEnvironment:
     rng = random.Random(seed)
     if workload_mode == "synthetic":
-        tasks, vms = build_workload(workload_mode="synthetic", n_tasks=tasks_n, n_vms=vms_n, rng=rng)
-        tasks = _generate_tasks_by_load(tasks_n=tasks_n, load_level=load_level, rng=rng)
+        tasks, vms = build_workload(
+            workload_mode="synthetic",
+            n_tasks=tasks_n,
+            n_vms=vms_n,
+            rng=rng,
+            task_load_level=load_level,
+        )
     else:
         tasks, vms = build_workload(
             workload_mode="trace",
@@ -193,9 +186,20 @@ def run_scenario(
     seeds: Sequence[int],
     workload_mode: str,
     trace_csv: Path,
+    *,
+    ga_generations: int = 200,
+    aco_iterations: int = 200,
+    hybrid_cycles: int = 4,
+    ga_gens_per_cycle: int = 50,
+    aco_iters_per_cycle: int = 50,
 ) -> Dict[str, object]:
-    ga_cfg = GAConfig(init="heuristic_seeded", selection="tournament", survivor_strategy="elitism")
-    aco_cfg = ACOConfig(n_ants=30, n_iterations=200, variant="AS")
+    ga_cfg = GAConfig(
+        init="heuristic_seeded",
+        selection="tournament",
+        survivor_strategy="elitism",
+        generations=ga_generations,
+    )
+    aco_cfg = ACOConfig(n_ants=30, n_iterations=aco_iterations, variant="AS")
     hybrid_cfg = HybridConfig(
         ga=GAConfig(
             population_size=60,
@@ -219,9 +223,9 @@ def run_scenario(
             patience=20,
             local_search_max_rounds=256,
         ),
-        n_cycles=4,
-        ga_gens_per_cycle=50,
-        aco_iters_per_cycle=50,
+        n_cycles=hybrid_cycles,
+        ga_gens_per_cycle=ga_gens_per_cycle,
+        aco_iters_per_cycle=aco_iters_per_cycle,
         top_k_to_seed=5,
         pheromone_boost=3.0,
         inject_best_back=True,
@@ -358,6 +362,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Multi-scenario comparative runner: GA vs ACO vs Hybrid")
     parser.add_argument("--runs", type=int, default=30)
     parser.add_argument("--workload-mode", choices=["synthetic", "trace"], default="synthetic")
+    parser.add_argument("--ga-gens", type=int, default=200, help="GA generations per run")
+    parser.add_argument("--aco-iters", type=int, default=200, help="ACO iterations per run")
+    parser.add_argument("--hybrid-cycles", type=int, default=4, help="Hybrid GA→ACO cycles")
+    parser.add_argument("--ga-gens-per-cycle", type=int, default=50)
+    parser.add_argument("--aco-iters-per-cycle", type=int, default=50)
     parser.add_argument(
         "--trace-csv",
         type=str,
@@ -367,28 +376,30 @@ def main() -> None:
     args = parser.parse_args()
 
     seeds = load_seeds(args.runs)
-    scenarios = [
-        {"name": "low_load", "tasks_n": 20, "vms_n": 4, "load_level": "low"},
-        {"name": "medium_load", "tasks_n": 50, "vms_n": 10, "load_level": "medium"},
-        {"name": "high_load", "tasks_n": 100, "vms_n": 20, "load_level": "high"},
-    ]
+    scenarios = DEFAULT_SCENARIOS
     trace_csv = Path(args.trace_csv)
 
     RESULTS.mkdir(parents=True, exist_ok=True)
+    (RESULTS / "plots").mkdir(parents=True, exist_ok=True)
     all_json: List[Dict[str, object]] = []
     summary_rows: List[Dict[str, object]] = []
     stats_rows: List[Dict[str, object]] = []
 
     for sc in scenarios:
-        scenario_name = sc["name"]
+        scenario_name = sc.name
         out = run_scenario(
             scenario_name=scenario_name,
-            tasks_n=sc["tasks_n"],
-            vms_n=sc["vms_n"],
-            load_level=sc["load_level"],
+            tasks_n=sc.tasks_n,
+            vms_n=sc.vms_n,
+            load_level=sc.load_level,
             seeds=seeds,
             workload_mode=args.workload_mode,
             trace_csv=trace_csv,
+            ga_generations=args.ga_gens,
+            aco_iterations=args.aco_iters,
+            hybrid_cycles=args.hybrid_cycles,
+            ga_gens_per_cycle=args.ga_gens_per_cycle,
+            aco_iters_per_cycle=args.aco_iters_per_cycle,
         )
         all_json.append(out)
 
@@ -427,10 +438,48 @@ def main() -> None:
     write_summary_csv(summary_rows, RESULTS / "comparative_head_to_head.csv")
     write_stats_csv(stats_rows, RESULTS / "comparative_significance_tests.csv")
 
+    if HAS_MPL:
+        _plot_head_to_head(summary_rows, RESULTS / "plots" / "comparative_mean_fitness.png")
+
     print("Wrote:")
     print(" - results/comparative_multi_scenario.json")
     print(" - results/comparative_head_to_head.csv")
     print(" - results/comparative_significance_tests.csv")
+    if HAS_MPL:
+        print(" - results/plots/comparative_mean_fitness.png")
+
+
+def _plot_head_to_head(summary_rows: Sequence[Dict[str, object]], out_path: Path) -> None:
+    """Plot mean fitness per scenario per algorithm from the summary table."""
+    # Group: scenario -> algorithm -> mean_fitness
+    scenarios: List[str] = sorted({str(r["scenario"]) for r in summary_rows})
+    algos: List[str] = ["GA", "ACO", "Hybrid", "DE+GA"]
+
+    mean_by_sc_algo: Dict[Tuple[str, str], float] = {}
+    for r in summary_rows:
+        sc = str(r["scenario"])
+        algo = str(r["algorithm"])
+        mean_by_sc_algo[(sc, algo)] = float(r["mean_fitness"])
+
+    import numpy as np
+
+    x = np.arange(len(scenarios))
+    width = 0.18
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for i, algo in enumerate(algos):
+        vals = [mean_by_sc_algo.get((sc, algo), float("nan")) for sc in scenarios]
+        ax.bar(x + (i - 1.5) * width, vals, width, label=algo)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(scenarios)
+    ax.set_ylabel("Mean fitness (lower is better)")
+    ax.set_title("GA vs ACO vs Hybrid — Mean fitness across scenarios")
+    ax.grid(True, axis="y", linestyle="--", alpha=0.4)
+    ax.legend(ncol=4, fontsize=9)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
 
 
 if __name__ == "__main__":

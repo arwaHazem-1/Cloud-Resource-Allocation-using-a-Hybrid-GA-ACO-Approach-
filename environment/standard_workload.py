@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from environment.cloud_model import Task, VM
-from environment.dataset_loader import generate_vms
+from environment.dataset_loader import generate_tasks, generate_tasks_by_load, generate_vms
 
 
 def load_trace_tasks(
@@ -44,6 +44,7 @@ def build_workload(
     n_vms: int,
     rng: Optional[random.Random] = None,
     trace_csv: str | Path | None = None,
+    task_load_level: str | None = None,
 ) -> tuple[List[Task], List[VM]]:
     rng = rng or random.Random()
     if workload_mode == "trace":
@@ -51,9 +52,10 @@ def build_workload(
             raise ValueError("trace_csv must be provided when workload_mode='trace'")
         tasks = load_trace_tasks(trace_csv=trace_csv, n_tasks=n_tasks, rng=rng)
     else:
-        from environment.dataset_loader import generate_tasks
-
-        tasks = generate_tasks(n_tasks=n_tasks, rng=rng)
+        if task_load_level is None:
+            tasks = generate_tasks(n_tasks=n_tasks, rng=rng)
+        else:
+            tasks = generate_tasks_by_load(n_tasks=n_tasks, load_level=task_load_level, rng=rng)
 
     vms = generate_vms(n_vms=n_vms, rng=rng)
     return tasks, vms
