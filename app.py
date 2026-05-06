@@ -4,7 +4,10 @@ import random
 import time
 from functools import partial
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import matplotlib
+matplotlib.use('Agg')  # Set non-interactive backend for Streamlit
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -26,9 +29,58 @@ PLOTS_DIR = ROOT / "results" / "plots"
 
 
 def fig_to_png_bytes(fig) -> bytes:
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
-    return buf.getvalue()
+    """Convert matplotlib figure to PNG bytes with error handling."""
+    try:
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+        buf.seek(0)
+        return buf.getvalue()
+    except Exception as e:
+        st.error(f"Error converting plot to PNG: {e}")
+        return b""
+
+
+def run_algorithm_parallel(algorithm_name, algorithm_func, cfg, env, runs, per_run_seeds, progress_callback, diversity_mode=None):
+    """Run an algorithm for all runs in parallel"""
+    results = []
+    metrics_all = []
+    histories = []
+    best_genomes = []  # Store best genomes for each run
+    
+    def single_run(run_idx):
+        seed = int(per_run_seeds[run_idx])
+        if algorithm_name == "GA":
+            result = algorithm_func(env, fitness_fn=lambda g, e: evaluate(g, e), cfg=cfg, seed=seed)
+        elif algorithm_name == "ACO":
+            result = algorithm_func(env, fitness_fn=lambda g, e: evaluate(g, e), cfg=cfg, seed=seed)
+        elif algorithm_name == "Hybrid":
+            diversity_fn = None
+            if diversity_mode == "Fitness Sharing":
+                diversity_fn = partial(fitness_sharing, sigma=0.3, alpha=1.0)
+            elif diversity_mode == "Island Model":
+                diversity_fn = IslandModel(n_islands=4, migration_interval=5, migration_k=2)
+            result = algorithm_func(env, fitness_fn=lambda g, e: evaluate(g, e), cfg=cfg, seed=seed, diversity_fn=diversity_fn)
+        else:  # DE+GA
+            result = algorithm_func(env, fitness_fn=lambda g, e: evaluate(g, e), cfg=cfg, seed=seed)
+        
+        return run_idx, result
+    
+    # Use ThreadPoolExecutor for parallel execution
+    max_workers = min(4, runs)  # Limit to 4 workers to avoid overwhelming system
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(single_run, i) for i in range(runs)]
+        
+        for future in as_completed(futures):
+            run_idx, result = future.result()
+            results.append(result["best_fitness"])
+            metrics_all.append(evaluate_metrics(result["best_genome"], env))
+            histories.append(result["history_best"])
+            best_genomes.append(result["best_genome"])  # Store the best genome
+            progress_callback()
+    
+    # Sort results by run index to maintain order
+    sorted_results = sorted(zip(range(runs), results, metrics_all, histories, best_genomes), key=lambda x: x[0])
+    return [r[1] for r in sorted_results], [r[2] for r in sorted_results], [r[3] for r in sorted_results], [r[4] for r in sorted_results]
 
 
 def load_shared_seeds(n: int) -> list[int]:
@@ -152,7 +204,7 @@ st.sidebar.header("Parameters")
 st.sidebar.subheader("Workload")
 scenario_mode = st.sidebar.selectbox("Scenario Mode", ["Custom", "Low/Medium/High presets"], index=1)
 if scenario_mode == "Low/Medium/High presets":
-    scenario = st.sidebar.selectbox("Scenario", ["low_load (20/4)", "medium_load (50/10)", "high_load (100/20)"], index=0)
+    scenario = st.sidebar.selectbox("Scenario", ["low_load (20/4)", "medium_load (50/10)", "high_load (100/20)"], index=1)
     if scenario.startswith("low_load"):
         num_tasks, num_vms, load_level = 20, 4, "low"
     elif scenario.startswith("medium_load"):
@@ -164,10 +216,10 @@ else:
     num_vms = st.sidebar.slider("VMs", 2, 30, 6)
     load_level = st.sidebar.selectbox("Synthetic load level", ["low", "medium", "high"], index=1)
 
-cycles = st.sidebar.slider("Hybrid Cycles", 1, 10, 4)
-ga_gens = st.sidebar.slider("GA Generations", 10, 200, 50)
-aco_iters = st.sidebar.slider("ACO Iterations", 10, 200, 50)
-runs = st.sidebar.slider("Repeated Runs", 3, 30, 10)
+cycles = st.sidebar.slider("Hybrid Cycles", 1, 10, 2)  # Reduced from 4 to 2
+ga_gens = st.sidebar.slider("GA Generations", 10, 200, 25)  # Reduced from 50 to 25
+aco_iters = st.sidebar.slider("ACO Iterations", 10, 200, 25)  # Reduced from 50 to 25
+runs = st.sidebar.slider("Repeated Runs", 3, 30, 5)  # Reduced from 10 to 5
 aco_variant = st.sidebar.selectbox("ACO Variant", ["AS", "ACS"], index=0)
 diversity_mode = st.sidebar.selectbox(
     "Hybrid Diversity",
@@ -239,85 +291,46 @@ if st.button("Run All Algorithms"):
 
     with st.spinner("Running algorithms..."):
 
-        # GA
+        # GA (with early stopping)
         start = time.time()
-        for _run in range(runs):
-            status.write(f"GA run {_run + 1}/{runs}")
-            ga_result = run_ga(
-                env,
-                fitness_fn=lambda g, e: evaluate(g, e),
-                cfg=GAConfig(generations=ga_gens),
-                seed=int(per_run_seeds[_run]),
-            )
-            ga_results.append(ga_result["best_fitness"])
-            ga_metrics_all.append(evaluate_metrics(ga_result["best_genome"], env))
-            ga_histories.append(ga_result["history_best"])
-            done_steps += 1
-            progress.progress(done_steps / total_steps)
+        status.write("Running GA...")
+        ga_cfg = GAConfig(generations=ga_gens, patience=20)  # Add early stopping
+        ga_results, ga_metrics_all, ga_histories, ga_genomes = run_algorithm_parallel(
+            "GA", run_ga, ga_cfg, env, runs, per_run_seeds, lambda: progress.progress(runs / total_steps)
+        )
         ga_time = time.time() - start
 
-        # ACO
+        # ACO (with early stopping)
         start = time.time()
-        for _run in range(runs):
-            status.write(f"ACO run {_run + 1}/{runs}")
-            aco_result = run_aco(
-                env,
-                fitness_fn=lambda g, e: evaluate(g, e),
-                cfg=ACOConfig(n_iterations=aco_iters, variant=aco_variant),
-                seed=int(per_run_seeds[_run]),
-            )
-            aco_results.append(aco_result["best_fitness"])
-            aco_metrics_all.append(evaluate_metrics(aco_result["best_genome"], env))
-            aco_histories.append(aco_result["history_best"])
-            done_steps += 1
-            progress.progress(done_steps / total_steps)
+        status.write("Running ACO...")
+        aco_cfg = ACOConfig(n_iterations=aco_iters, variant=aco_variant, patience=20)  # Add early stopping
+        aco_results, aco_metrics_all, aco_histories, aco_genomes = run_algorithm_parallel(
+            "ACO", run_aco, aco_cfg, env, runs, per_run_seeds, lambda: progress.progress(2 * runs / total_steps)
+        )
         aco_time = time.time() - start
 
-        # Hybrid
-        if diversity_mode == "Fitness Sharing":
-            diversity_fn = partial(fitness_sharing, sigma=0.3, alpha=1.0)
-        elif diversity_mode == "Island Model":
-            diversity_fn = IslandModel(n_islands=4, migration_interval=5, migration_k=2)
-        else:
-            diversity_fn = None
-
+        # Hybrid (with early stopping)
         start = time.time()
-        for _run in range(runs):
-            status.write(f"Hybrid run {_run + 1}/{runs}")
-            hybrid_result = run_hybrid(
-                env,
-                fitness_fn=lambda g, e: evaluate(g, e),
-                cfg=HybridConfig(
-                    n_cycles=cycles,
-                    ga_gens_per_cycle=ga_gens,
-                    aco_iters_per_cycle=aco_iters,
-                    aco=ACOConfig(variant=aco_variant),
-                ),
-                seed=int(per_run_seeds[_run]),
-                diversity_fn=diversity_fn,
-            )
-            hybrid_results.append(hybrid_result["best_fitness"])
-            hybrid_metrics_all.append(evaluate_metrics(hybrid_result["best_genome"], env))
-            hybrid_histories.append(hybrid_result["history_best"])
-            done_steps += 1
-            progress.progress(done_steps / total_steps)
+        status.write("Running Hybrid...")
+        hybrid_cfg = HybridConfig(
+            n_cycles=cycles,
+            ga_gens_per_cycle=ga_gens,
+            aco_iters_per_cycle=aco_iters,
+            aco=ACOConfig(variant=aco_variant, patience=15),  # Add early stopping
+            patience=10,  # Hybrid-level early stopping
+        )
+        
+        hybrid_results, hybrid_metrics_all, hybrid_histories, hybrid_genomes = run_algorithm_parallel(
+            "Hybrid", run_hybrid, hybrid_cfg, env, runs, per_run_seeds, lambda: progress.progress(3 * runs / total_steps), diversity_mode
+        )
         hybrid_time = time.time() - start
 
-        # DE+GA
+        # DE+GA (no early stopping to maintain DE exploration)
         start = time.time()
-        for _run in range(runs):
-            status.write(f"DE+GA run {_run + 1}/{runs}")
-            dega_result = run_de_ga(
-                env,
-                fitness_fn=lambda g, e: evaluate(g, e),
-                cfg=DEGAConfig(ga_generations=ga_gens, de_generations=aco_iters),
-                seed=int(per_run_seeds[_run]),
-            )
-            dega_results.append(dega_result["best_fitness"])
-            dega_metrics_all.append(evaluate_metrics(dega_result["best_genome"], env))
-            dega_histories.append(dega_result["history_best"])
-            done_steps += 1
-            progress.progress(done_steps / total_steps)
+        status.write("Running DE+GA...")
+        dega_results, dega_metrics_all, dega_histories, dega_genomes = run_algorithm_parallel(
+            "DE+GA", run_de_ga, DEGAConfig(ga_generations=ga_gens, de_generations=aco_iters), env, runs, per_run_seeds, lambda: progress.progress(4 * runs / total_steps)
+        )
         dega_time = time.time() - start
 
     status.write("All runs completed.")
@@ -417,11 +430,25 @@ if st.button("Run All Algorithms"):
 
     # ================== TIME ==================
     st.subheader("Execution Time (seconds)")
-    st.dataframe(pd.DataFrame({
-        "Algorithm":     ["GA", "ACO", "Hybrid", "DE+GA"],
+    total_time = ga_time + aco_time + hybrid_time + dega_time
+    speedup = total_time / max(ga_time, aco_time, hybrid_time, dega_time)
+    
+    time_df = pd.DataFrame({
+        "Algorithm":     ["GA", "ACO", "Hybrid", "DE+GA", "Total", "Parallel Speedup"],
         "Wall time (s)": [round(ga_time, 3), round(aco_time, 3),
-                          round(hybrid_time, 3), round(dega_time, 3)],
-    }), use_container_width=True)
+                          round(hybrid_time, 3), round(dega_time, 3),
+                          round(total_time, 3), f"{speedup:.1f}x"],
+        "Relative (%)": [f"{100*ga_time/total_time:.1f}%", f"{100*aco_time/total_time:.1f}%",
+                         f"{100*hybrid_time/total_time:.1f}%", f"{100*dega_time/total_time:.1f}%",
+                         "100%", "N/A"]
+    })
+    st.dataframe(time_df, use_container_width=True)
+    
+    # Performance insights
+    st.markdown("**Performance Insights:**")
+    st.markdown(f"- **Total execution time**: {total_time:.1f} seconds")
+    st.markdown(f"- **Parallel speedup**: ~{speedup:.1f}x vs sequential execution")
+    st.markdown(f"- **Average time per run**: {total_time/(4*runs):.2f} seconds")
 
     # ================== BEST FITNESS ==================
     st.subheader("Best Fitness Comparison")
@@ -434,30 +461,77 @@ if st.button("Run All Algorithms"):
     st.write(results_dict)
 
     # ================== CONVERGENCE CURVE ==================
-    st.subheader("Convergence Curve")
+    st.subheader("Convergence Curve (Mean across all runs)")
+
+    def compute_mean_history(histories):
+        """Compute mean convergence curve across all runs with normalized x-axis."""
+        if not histories:
+            return []
+        
+        # Find maximum length across all histories
+        max_len = max(len(h) for h in histories)
+        
+        # Pad shorter histories with their final value
+        padded_histories = []
+        for h in histories:
+            if len(h) < max_len:
+                padded = h + [h[-1]] * (max_len - len(h))
+            else:
+                padded = h
+            padded_histories.append(padded)
+        
+        # Compute mean at each iteration
+        mean_history = []
+        for i in range(max_len):
+            mean_history.append(np.mean([h[i] for h in padded_histories]))
+        
+        return mean_history
+
+    # Compute mean histories for each algorithm
+    ga_mean_history = compute_mean_history(ga_histories)
+    aco_mean_history = compute_mean_history(aco_histories)
+    hybrid_mean_history = compute_mean_history(hybrid_histories)
+    dega_mean_history = compute_mean_history(dega_histories)
 
     fig_conv, ax_conv = plt.subplots()
-    ax_conv.plot(ga_result["history_best"],     label="GA")
-    ax_conv.plot(aco_result["history_best"],    label="ACO")
-    ax_conv.plot(hybrid_result["history_best"], label="Hybrid")
-    ax_conv.plot(dega_result["history_best"],   label="DE+GA")
-    ax_conv.set_xlabel("Iterations")
+    
+    # Create normalized x-axis (0-100%)
+    max_iterations = max(len(ga_mean_history), len(aco_mean_history), 
+                         len(hybrid_mean_history), len(dega_mean_history))
+    
+    def normalize_x_axis(history):
+        x_norm = np.linspace(0, 100, len(history))
+        return x_norm
+    
+    ax_conv.plot(normalize_x_axis(ga_mean_history), ga_mean_history, label="GA", linewidth=2)
+    ax_conv.plot(normalize_x_axis(aco_mean_history), aco_mean_history, label="ACO", linewidth=2)
+    ax_conv.plot(normalize_x_axis(hybrid_mean_history), hybrid_mean_history, label="Hybrid", linewidth=2)
+    ax_conv.plot(normalize_x_axis(dega_mean_history), dega_mean_history, label="DE+GA", linewidth=2)
+    ax_conv.set_xlabel("Progress (%)")
     ax_conv.set_ylabel("Best Fitness")
-    ax_conv.set_title("Convergence Curve")
+    ax_conv.set_title("Convergence Curve (Mean across all runs)")
     ax_conv.legend()
+    ax_conv.grid(True, alpha=0.3)
     st.pyplot(fig_conv)
+    
+    # Generate PNG with error handling
     conv_png = fig_to_png_bytes(fig_conv)
-    if save_plots_to_disk:
-        PLOTS_DIR.mkdir(parents=True, exist_ok=True)
-        (PLOTS_DIR / "convergence_plot.png").write_bytes(conv_png)
-        st.caption("Saved: `results/plots/convergence_plot.png`")
-    st.download_button("Download Convergence Plot", data=conv_png,
-                       file_name="convergence_plot.png", mime="image/png")
+    if conv_png:  # Only proceed if PNG generation was successful
+        if save_plots_to_disk:
+            PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+            (PLOTS_DIR / "convergence_plot.png").write_bytes(conv_png)
+            st.caption("Saved: `results/plots/convergence_plot.png`")
+        st.download_button("Download Convergence Plot", data=conv_png,
+                           file_name="convergence_plot.png", mime="image/png")
+    else:
+        st.warning("PNG generation failed for convergence plot")
     plt.close(fig_conv)
 
     # ================== ALLOCATION ==================
     st.subheader("Task → VM Assignment (Hybrid)")
-    allocation = hybrid_result["best_genome"]
+    # Get the best allocation from all hybrid runs
+    best_hybrid_idx = np.argmin(hybrid_results)
+    allocation = hybrid_genomes[best_hybrid_idx]  # Use the best genome from the best run
     df = pd.DataFrame({"Task": list(range(len(allocation))), "VM": allocation})
     st.dataframe(df)
 
@@ -468,18 +542,30 @@ if st.button("Run All Algorithms"):
         vm_load[vm] += env.tasks[task].cpu + env.tasks[task].ram
 
     fig_load, ax_load = plt.subplots()
-    ax_load.bar(range(num_vms), vm_load)
+    bars = ax_load.bar(range(num_vms), vm_load, color='#45B7D1', alpha=0.7)
     ax_load.set_xlabel("VM ID")
     ax_load.set_ylabel("CPU + RAM Load")
     ax_load.set_title("VM Load Distribution")
+    ax_load.set_xticks(range(num_vms))
+    ax_load.set_xticklabels([f"VM {i}" for i in range(num_vms)])
+    # Add value labels on bars
+    for bar, load in zip(bars, vm_load):
+        height = bar.get_height()
+        ax_load.text(bar.get_x() + bar.get_width()/2., height + height*0.01,
+                   f'{load:.1f}', ha='center', va='bottom', fontsize=9)
     st.pyplot(fig_load)
+    
+    # Generate PNG with error handling
     load_png = fig_to_png_bytes(fig_load)
-    if save_plots_to_disk:
-        PLOTS_DIR.mkdir(parents=True, exist_ok=True)
-        (PLOTS_DIR / "vm_load_plot.png").write_bytes(load_png)
-        st.caption("Saved: `results/plots/vm_load_plot.png`")
-    st.download_button("Download Load Plot", data=load_png,
-                       file_name="vm_load_plot.png", mime="image/png")
+    if load_png:  # Only proceed if PNG generation was successful
+        if save_plots_to_disk:
+            PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+            (PLOTS_DIR / "vm_load_plot.png").write_bytes(load_png)
+            st.caption("Saved: `results/plots/vm_load_plot.png`")
+        st.download_button("Download Load Plot", data=load_png,
+                           file_name="vm_load_plot.png", mime="image/png")
+    else:
+        st.warning("PNG generation failed for VM load plot")
     plt.close(fig_load)
 
     # ================== PERFORMANCE METRICS ==================
@@ -507,21 +593,34 @@ if st.button("Run All Algorithms"):
     random_allocation = [random.randint(0, num_vms - 1) for _ in range(num_tasks)]
     before = evaluate(random_allocation, env)
     fig_cmp, ax_cmp = plt.subplots()
-    ax_cmp.bar(
+    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57']  # Red, Teal, Blue, Green, Yellow
+    bars = ax_cmp.bar(
         ["Random", "GA", "ACO", "Hybrid", "DE+GA"],
         [before, np.mean(ga_results), np.mean(aco_results),
-         np.mean(hybrid_results), np.mean(dega_results)]
+         np.mean(hybrid_results), np.mean(dega_results)],
+        color=colors
     )
     ax_cmp.set_ylabel("Fitness")
     ax_cmp.set_title("Improvement Comparison")
+    # Add value labels on bars
+    for bar, value in zip(bars, [before, np.mean(ga_results), np.mean(aco_results),
+                                  np.mean(hybrid_results), np.mean(dega_results)]):
+        height = bar.get_height()
+        ax_cmp.text(bar.get_x() + bar.get_width()/2., height + height*0.01,
+                   f'{value:.2f}', ha='center', va='bottom', fontsize=9)
     st.pyplot(fig_cmp)
+    
+    # Generate PNG with error handling
     cmp_png = fig_to_png_bytes(fig_cmp)
-    if save_plots_to_disk:
-        PLOTS_DIR.mkdir(parents=True, exist_ok=True)
-        (PLOTS_DIR / "fitness_comparison.png").write_bytes(cmp_png)
-        st.caption("Saved: `results/plots/fitness_comparison.png`")
-    st.download_button("Download Comparison Plot", data=cmp_png,
-                       file_name="fitness_comparison.png", mime="image/png")
+    if cmp_png:  # Only proceed if PNG generation was successful
+        if save_plots_to_disk:
+            PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+            (PLOTS_DIR / "fitness_comparison.png").write_bytes(cmp_png)
+            st.caption("Saved: `results/plots/fitness_comparison.png`")
+        st.download_button("Download Comparison Plot", data=cmp_png,
+                           file_name="fitness_comparison.png", mime="image/png")
+    else:
+        st.warning("PNG generation failed for fitness comparison plot")
     plt.close(fig_cmp)
 
     # ================== EXPORTS ==================

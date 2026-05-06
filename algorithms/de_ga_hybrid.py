@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Sequence
 
 from algorithms.de import de_generate_trial
-from algorithms.ga import GAConfig, _initialise_random, _make_child, _score_population
+from algorithms.ga import GAConfig, _initialise_random, _initialise_heuristic_seeded, _make_child, _score_population
 from algorithms.operators import ScoredIndividual, tournament_selection
 
 
@@ -18,6 +18,8 @@ class DEGAConfig:
     crossover_rate: float = 0.8
     ga_tournament_size: int = 3
     elitism_k: int = 2
+    init: str = "heuristic_seeded"  # Match other algorithms
+    heuristic_seed_ratio: float = 0.3  # Match other algorithms
 
 
 def run_de_ga(
@@ -38,8 +40,15 @@ def run_de_ga(
     def fit(genome: Sequence[int]) -> float:
         return float(fitness_fn(genome, env))
 
-    # Initial population
-    population = [_initialise_random(n_tasks, n_vms, rng) for _ in range(cfg.population_size)]
+    # Initial population with heuristic seeding (matching other algorithms)
+    population: List[List[int]] = []
+    if cfg.init == "random":
+        population = [_initialise_random(n_tasks, n_vms, rng) for _ in range(cfg.population_size)]
+    else:
+        seeded = int(round(cfg.population_size * cfg.heuristic_seed_ratio))
+        seeded = max(1, min(cfg.population_size, seeded))
+        population.extend(_initialise_heuristic_seeded(env.tasks, env.vms, rng) for _ in range(seeded))
+        population.extend(_initialise_random(n_tasks, n_vms, rng) for _ in range(cfg.population_size - seeded))
     scored = _score_population(population, fit)
     best = min(scored, key=lambda s: s.fitness)
     history_best = [best.fitness]
